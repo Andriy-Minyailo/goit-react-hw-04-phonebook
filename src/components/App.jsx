@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useEffect, useState } from 'react';
 import css from './App.module.css';
 import { FormAddContacts } from './FormAddContacts/FormAddContacts';
 import { Filter } from './Filter/Filter';
@@ -6,77 +6,68 @@ import { ListContacts } from './ListContacts/ListContacts';
 import { getLocalStorage, saveLocalStorage } from 'checkLocalStorage';
 const KEY_LOCAL_CONTACTS = 'cotacts';
 
-export class App extends Component {
-  state = {
-    contacts: [],
-    filter: '',
-  };
-  componentDidMount() {
+export const App = () => {
+  const [contacts, setContacts] = useState([]);
+  const [filter, setfilter] = useState('');
+
+  useEffect(() => {
     const stateLocalStorage = getLocalStorage(KEY_LOCAL_CONTACTS);
     if (stateLocalStorage) {
-      this.setState({ contacts: stateLocalStorage });
+      setContacts(stateLocalStorage);
     }
-  }
-  componentDidUpdate(prevProps, prevState) {
-    if (this.state.contacts.length === 0) {
+  }, []);
+
+  useEffect(() => {
+    if (contacts.length === 0) {
       localStorage.removeItem(KEY_LOCAL_CONTACTS);
       return;
+    } else {
+      saveLocalStorage(KEY_LOCAL_CONTACTS, contacts);
     }
-    if (prevState.contacts !== this.state.contacts) {
-      saveLocalStorage(KEY_LOCAL_CONTACTS, this.state.contacts);
-    }
-  }
+  }, [contacts]);
 
-  handleChange = ({ target: { name, value } }) => {
-    this.setState({ [name]: value });
+  const handleChange = ({ target: { value } }) => {
+    setfilter(value.trimLeft());
   };
 
-  deleteContact = ({ target: { id } }) => {
-    // deleteLocalStorage(KEY_LOCAL_CONTACTS, id);
-    this.setState(prevState => {
-      return { contacts: prevState.contacts.filter(obj => obj.id !== id) };
-    });
+  const deleteContact = ({ target: { id } }) => {
+    setContacts(prevState => prevState.filter(obj => obj.id !== id));
   };
 
-  addContact = objContact => {
-    if (this.checkName(objContact.name)) {
-      this.setState(prevState => ({
-        contacts: [...prevState.contacts, objContact],
-      }));
-      // recordLocalStorage(KEY_LOCAL_CONTACTS, objContact);
+  const addContact = objContact => {
+    if (checkName(objContact)) {
+      setContacts(prevState => [...prevState, objContact]);
     }
   };
 
-  checkName = name => {
-    const resultCheck = this.state.contacts.find(
-      obj => obj.name.toLowerCase() === name.toLowerCase()
+  const checkName = ({ name, number }) => {
+    const resultCheck = contacts.find(
+      obj =>
+        obj.name.toLowerCase() === name.toLowerCase() || obj.number === number
     );
     if (resultCheck) {
-      alert(`${name} is already in contacts.`);
+      alert(`${name} or  number: ${number} is already in contacts.`);
     }
     return !resultCheck;
   };
 
-  filterContacts = () => {
-    return this.state.contacts.filter(({ name }) => {
-      return name.toLowerCase().includes(this.state.filter.toLowerCase());
+  const filterContacts = () => {
+    if (!filter) return contacts;
+    return contacts.filter(({ name }) => {
+      return name.toLowerCase().includes(filter.toLowerCase());
     });
   };
 
-  render() {
-    const filterRender = this.filterContacts();
-
-    return (
-      <div className={css.container}>
-        <h2>Phonebook</h2>
-        <FormAddContacts addContact={this.addContact} />
-        <h2>Contacts</h2>
-        <Filter handleChange={this.handleChange} value={this.state.filter} />
-        <ListContacts
-          filterRender={filterRender}
-          deleteContact={this.deleteContact}
-        />
-      </div>
-    );
-  }
-}
+  return (
+    <div className={css.container}>
+      <h2>Phonebook</h2>
+      <FormAddContacts addContact={addContact} />
+      <h2>Contacts</h2>
+      <Filter handleChange={handleChange} value={filter} />
+      <ListContacts
+        filterRender={filterContacts()}
+        deleteContact={deleteContact}
+      />
+    </div>
+  );
+};
